@@ -1,0 +1,82 @@
+---
+- name: Install Supervisor Service
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    ansible_ssh_private_key_file: /root/.ssh/id_rsa
+    ansible_user: root
+    ansible_port: 22
+
+  tasks:
+    - name: install super
+      shell: pip install supervisor
+
+    - name: create necessary directory
+      file:
+        path: /var/supervisord
+        state: directory
+        owner: root
+        group: root
+
+    - name: create supervisord.conf
+      copy:
+        dest: /etc/supervisord.conf
+        content: |
+          [unix_http_server]
+          file=/var/supervisord/supervisor.sock
+
+          [supervisord]
+          logfile=/var/supervisord/supervisord.log
+          logfile_maxbytes=50MB
+          logfile_backups=1
+          loglevel=info
+          pidfile=/var/supervisord/supervisord.pid
+          nodaemon=false
+          silent=false
+          minfds=1024
+          minprocs=200
+
+          [rpcinterface:supervisor]
+          supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+
+          [supervisorctl]
+          serverurl=unix:///var/supervisord/supervisor.sock
+
+          [include]
+          files=/etc/supervisord.d/*.ini
+
+    - name: create supervisord.service
+      copy:
+        dest: /usr/lib/systemd/system/supervisord.service
+        content: |
+          [Unit]
+          Description=Supervisor Daemon
+
+          [Service]
+          User=auser
+          Group=auser
+          Type=forking
+          ExecStart=/usr/bin/supervisord -c /etc/supervisord.conf
+          ExecStartPre=/usr/bin/mkdir -p /var/supervisord
+          ExecStop=/usr/bin/supervisorctl -c /etc/supervisord.conf shutdown
+          ExecReload=/usr/bin/supervisorctl -c /etc/supervisord.conf reload
+          KillMode=process
+          Restart=on-failure
+          RestartSec=30s
+
+          [Install]
+          WantedBy=multi-user.target
+      notify: Reload systemd
+
+    - name: set supervisord to start on boot
+      systemd:
+        name: supervisord
+        state: started
+        enabled: yes
+      notify: Reload systemd
+
+  handlers:
+  - name: Reload systemd
+    systemd:
+      daemon_reload: yes
