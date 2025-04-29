@@ -1,0 +1,19 @@
+---
+- name: Create ntpdate crontab job
+  hosts: all
+  gather_facts: false
+  become: false
+  
+  vars:
+    ansible_ssh_private_key_file: /root/.ssh/id_rsa
+    ansible_user: root
+    ansible_port: 22
+
+  tasks:
+    - name: create ntpdate crontab job
+      cron:
+        name: synching ntpdate
+        minute: "*/30"
+        user: root
+        job: nohup /usr/sbin/ntpdate -u pool.ntp.org >/dev/null 2>&1 &
+        state: present
