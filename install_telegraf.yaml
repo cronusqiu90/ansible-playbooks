@@ -1,0 +1,56 @@
+---
+- name: Install Telegraf
+  hosts: all
+  become: true
+  gather_facts: false
+  
+  vars:
+    ansible_ssh_private_key_file: /root/.ssh/id_rsa
+    ansible_user: root
+    ansible_port: 22
+    
+    telegraf_version: "1.29.5"
+    telegraf_url: "https://dl.influxdata.com/telegraf/releases/telegraf-{{ telegraf_version}}-1.x86_64.rpm"
+    telegraf_config_file: "/etc/telegraf/telegraf.conf"
+    telegraf_service_name: "telegraf"
+
+  tasks:
+    - name: download telegraf
+      get_url:
+        url: "{{ telegraf_url }}"
+        dest: "/tmp/telegraf-{{ telegraf_version }}-1.x86_64.rpm"
+
+    - name: install telegraf
+      yum:
+        name: "/tmp/telegraf-{{ telegraf_version }}-1.x86_64.rpm"
+        state: persent
+
+    - name: configure telegraf
+      copy:
+        dest: /etc/telegraf/telegraf.conf
+        content: |
+          [agent]
+            interval = "90s"
+          [[inputs.cpu]]
+            percpu = false
+            totalcpu = true
+          [[inputs.disk]]
+            ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+          [[inputs.diskio]]
+          [[inputs.kernel]]
+          [[inputs.mem]]
+          [[inputs.processes]]
+          [[inputs.system]]
+            fielddrop = ["uptime_format"]
+          [[inputs.net]]
+            ignore_protocol_stats = true
+          [[aggregators.merge]]
+            drop_original = true
+          [[outputs.file]]
+            files = ["stdout"]
+            
+    - name: enable service
+      systemd:
+        name: telegraf
+        state: started
+        enabled: true
