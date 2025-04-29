@@ -1,0 +1,24 @@
+- name: Install and Configure RabbitMQ
+  hosts: all
+  become: true
+
+  vars:
+    ansible_ssh_private_key_file: /root/.ssh/id_rsa
+    ansible_user: root
+    ansible_port: 22
+
+    rabbitmq_version: "3.6.14"
+    
+    rabbitmq_admin_password: ""
+    rabbitmq_default_user: "guest"
+    rabbitmq_default_pass: "guest"
+    
+    rabbitmq_port: 5673
+    rabbitmq_management_port: 15673
+    rabbitmq_config_file: "/etc/rabbitmq/rabbitmq.conf"
+
+    rabbitmq_plugins:
+      - rabbitmq_management
+
+  roles:
+    - geerlingguy.rabbitmq
